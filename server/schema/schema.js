@@ -2,7 +2,7 @@ const graphql = require('graphql')
 const Movie = require('../models/movie')
 const Director = require('../models/director')
 
-const { GraphQLObjectType, GraphQLID, GraphQLString, GraphQLSchema, GraphQLInt } = graphql
+const { GraphQLObjectType, GraphQLID, GraphQLString, GraphQLSchema, GraphQLInt, GraphQLList, GraphQLNonNull } = graphql
 
 // ! 型宣言
 const MovieType = new GraphQLObjectType({
@@ -10,7 +10,13 @@ const MovieType = new GraphQLObjectType({
 	fields: () => ({ //* 取得したいデータ & 型
 		id: { type: GraphQLID },
 		name: { type: GraphQLString },
-		genre: { type: GraphQLString }
+		genre: { type: GraphQLString },
+		director: { 
+			type: DirectorType,
+			resolve(parent, args) {
+				return Director.findById(parent.directorId)
+			}
+		}
 	})
 })
 
@@ -19,7 +25,13 @@ const DirectorType = new GraphQLObjectType({
 	fields: () => ({ 
 		id: { type: GraphQLID },
 		name: { type: GraphQLString },
-		age: { type: GraphQLInt }
+		age: { type: GraphQLInt },
+		movies: {
+			type: new GraphQLList(MovieType),
+			resolve(parent, args) {
+				return Movie.find({ directorId: parent.id })
+			}
+		}
 	})
 })
 
@@ -37,8 +49,21 @@ const RootQuery = new GraphQLObjectType({
 			type: DirectorType,
 			args: { id: { type: GraphQLID }},
 
-			resolve(parents, args) {
+			resolve(parent, args) {
 				return Director.findById(args.id)
+			}
+		},
+		// * 一覧取得
+		movies: {
+			type: new GraphQLList(MovieType),
+			resolve(parent, args) {
+				return Movie.find({})
+			}
+		},
+		directors: {
+			type: new GraphQLList(DirectorType),
+			resolve(parent, args) {
+				return Director.find({})
 			}
 		}
 	}
@@ -48,31 +73,33 @@ const RootQuery = new GraphQLObjectType({
 const Mutation = new GraphQLObjectType({
 	name: 'Mutation',
 	fields: {
-		// * 映画の追加
+		// * 映画 追加
 		addMovie: {
 			type: MovieType,
 			args: {
 				name: { type: GraphQLString },
-				genre: { type: GraphQLString }
+				genre: { type: GraphQLString },
+				directorId: { type: GraphQLID }
 			},
-			resolve(parents, args) {
+			resolve(parent, args) {
 				let movie = new Movie({
 					name: args.name,
-					genre: args.genre
+					genre: args.genre,
+					directorId: args.directorId
 				})
 
 				return movie.save()
 			}
 		},
 
-		// * 監督の追加
+		// * 監督 追加
 		addDirector: {
 			type: DirectorType,
 			args: {
 				name: { type: GraphQLString },
 				age: { type: GraphQLInt }
 			},
-			resolve(parents, args) {
+			resolve(parent, args) {
 				let director = new Director({
 					name: args.name,
 					age: args.age
@@ -80,7 +107,64 @@ const Mutation = new GraphQLObjectType({
 
 				return director.save()
 			}
-		}
+		},
+		// * 映画 更新
+		updateMovie: {
+			type: MovieType,
+			args: {
+				id: { type: GraphQLNonNull(GraphQLID)},
+				name: { type: GraphQLString },
+				genre: { type: GraphQLString },
+				directorId: { type:  GraphQLInt},
+			},
+
+			resolve(parent, args) {
+				let updateMovie = {}
+				args.name && (updateMovie.name = args.name),
+				args.genre && (updateMovie.genre = args.genre)
+				args.directorId && (updateMovie.directorId = args.directorId)
+				return Movie.findByIdAndUpdate(args.id, updateMovie, {new: true})
+			}
+		},
+		// * 監督 更新
+		updateDirector: {
+			type: DirectorType,
+			args: {
+				id: { type: GraphQLNonNull(GraphQLID)},
+				name: { type: GraphQLString },
+				age: { type: GraphQLInt },
+			},
+
+			resolve(parent, args) {
+				let updateDirector = {}
+				args.name && (updateDirector.name = args.name),
+				args.age && (updateDirector.age = args.age)
+
+				return Director.findByIdAndUpdate(args.id, updateDirector, {new: true})
+			}
+		},
+		// * 映画 削除
+		deleteMovie: {
+			type: MovieType,
+			args: {
+				id: { type: GraphQLNonNull(GraphQLID)},
+			},
+
+			resolve(parent, args) {
+				return Movie.findByIdAndRemove(args.id)
+			}
+		},
+		// * 監督 削除
+		deleteDirector: {
+			type: DirectorType,
+			args: {
+				id: { type: GraphQLNonNull(GraphQLID)},
+			},
+
+			resolve(parent, args) {
+				return Director.findByIdAndRemove(args.id)
+			}
+		},
 	}
 })
 
