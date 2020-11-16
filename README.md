@@ -10,4 +10,5 @@
 ### front 
 - appllo
 - vue.js
+- vue cli
 
