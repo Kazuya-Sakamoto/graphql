@@ -3,7 +3,7 @@
     <Header></Header>
     <b-container>
       <b-row>
-        <b-col md="2"><Sidenav/></b-col>
+        <b-col md="4"><Sidenav/></b-col>
         <b-col md="8"><MovieList/></b-col>
       </b-row>
     </b-container>
